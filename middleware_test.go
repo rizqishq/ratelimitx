@@ -99,3 +99,104 @@ func TestHTTPMiddlewareBlocksRequest(t *testing.T) {
 		t.Fatalf("unexpected error body: %+v", body)
 	}
 }
+
+func TestHTTPMiddlewareWithOptionsCustomRejectedResponse(t *testing.T) {
+	limiter := &stubLimiter{result: Result{
+		Allowed:    false,
+		Limit:      3,
+		Remaining:  0,
+		RetryAfter: 3 * time.Second,
+		ResetAt:    time.Unix(1700001234, 0),
+	}}
+
+	var called bool
+	var receivedResult Result
+	var receivedPath string
+
+	middleware := HTTPMiddlewareWithOptions(limiter, ByHeader("X-API-Key"), HTTPMiddlewareOptions{
+		OnRejected: func(w http.ResponseWriter, r *http.Request, result Result) {
+			called = true
+			receivedResult = result
+			receivedPath = r.URL.Path
+			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("X-Custom-Rejected", "yes")
+			w.WriteHeader(http.StatusTeapot)
+			_, _ = w.Write([]byte("blocked by custom handler"))
+		},
+	})
+
+	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("next handler should not be called")
+	}))
+
+	req := httptest.NewRequest("GET", "/limited", nil)
+	req.Header.Set("X-API-Key", "client-2")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	if !called {
+		t.Fatal("expected custom rejection handler to be called")
+	}
+
+	if receivedPath != "/limited" {
+		t.Fatalf("unexpected request path: %q", receivedPath)
+	}
+
+	if receivedResult != limiter.result {
+		t.Fatalf("unexpected result passed to custom handler: %+v", receivedResult)
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("unexpected status code: %d", res.Code)
+	}
+
+	if got := res.Header().Get("X-Custom-Rejected"); got != "yes" {
+		t.Fatalf("unexpected custom header: %q", got)
+	}
+
+	if got := res.Header().Get("X-RateLimit-Limit"); got != "3" {
+		t.Fatalf("unexpected limit header: %q", got)
+	}
+
+	if got := res.Header().Get("X-RateLimit-Remaining"); got != "0" {
+		t.Fatalf("unexpected remaining header: %q", got)
+	}
+
+	if got := res.Header().Get("X-RateLimit-Reset"); got != "1700001234" {
+		t.Fatalf("unexpected reset header: %q", got)
+	}
+
+	if body := res.Body.String(); body != "blocked by custom handler" {
+		t.Fatalf("unexpected body: %q", body)
+	}
+}
+
+func TestHTTPMiddlewareWithOptionsUsesDefaultRejectedResponseWhenNil(t *testing.T) {
+	limiter := &stubLimiter{result: Result{
+		Allowed:    false,
+		Limit:      2,
+		Remaining:  0,
+		RetryAfter: time.Second,
+		ResetAt:    time.Unix(1700005678, 0),
+	}}
+
+	middleware := HTTPMiddlewareWithOptions(limiter, ByHeader("X-API-Key"), HTTPMiddlewareOptions{})
+	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("next handler should not be called")
+	}))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-API-Key", "client-3")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	if res.Code != http.StatusTooManyRequests {
+		t.Fatalf("unexpected status code: %d", res.Code)
+	}
+
+	if got := res.Header().Get("Retry-After"); got != "1" {
+		t.Fatalf("unexpected retry-after header: %q", got)
+	}
+}

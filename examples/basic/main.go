@@ -19,7 +19,8 @@ func main() {
 		_, _ = w.Write([]byte("ok\n"))
 	})
 
-	handler := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())(mux)
+	middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
+	handler := middleware(mux)
 
 	log.Println("listening on :8080")
 	if err := http.ListenAndServe(":8080", handler); err != nil {

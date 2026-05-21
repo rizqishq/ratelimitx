@@ -7,8 +7,26 @@ import (
 	"strconv"
 )
 
+// RateLimitResponseFunc writes the HTTP response for a rejected request.
+type RateLimitResponseFunc func(w http.ResponseWriter, r *http.Request, result Result)
+
+// HTTPMiddlewareOptions configures optional HTTP middleware behavior.
+type HTTPMiddlewareOptions struct {
+	OnRejected RateLimitResponseFunc
+}
+
 // HTTPMiddleware wraps an http.Handler with rate limiting behavior.
 func HTTPMiddleware(limiter Limiter, keyFunc KeyFunc) func(http.Handler) http.Handler {
+	return HTTPMiddlewareWithOptions(limiter, keyFunc, HTTPMiddlewareOptions{})
+}
+
+// HTTPMiddlewareWithOptions wraps an http.Handler with rate limiting behavior and optional middleware customization.
+func HTTPMiddlewareWithOptions(limiter Limiter, keyFunc KeyFunc, options HTTPMiddlewareOptions) func(http.Handler) http.Handler {
+	onRejected := options.OnRejected
+	if onRejected == nil {
+		onRejected = defaultRejectedResponse
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			key := keyFunc(r)
@@ -20,20 +38,23 @@ func HTTPMiddleware(limiter Limiter, keyFunc KeyFunc) func(http.Handler) http.Ha
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(result.ResetAt.Unix(), 10))
 
 			if !result.Allowed {
-				retryAfter := max(int(math.Ceil(result.RetryAfter.Seconds())), 1)
-
-				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusTooManyRequests)
-
-				_ = json.NewEncoder(w).Encode(map[string]string{
-					"error": "rate limit exceeded",
-				})
-
+				onRejected(w, r, result)
 				return
 			}
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func defaultRejectedResponse(w http.ResponseWriter, _ *http.Request, result Result) {
+	retryAfter := max(int(math.Ceil(result.RetryAfter.Seconds())), 1)
+
+	w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error": "rate limit exceeded",
+	})
 }

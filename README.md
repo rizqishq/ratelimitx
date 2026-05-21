@@ -40,8 +40,9 @@ func main() {
     })
 
     middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
+    handler := middleware(mux)
 
-    if err := http.ListenAndServe(":8080", middleware(mux)); err != nil {
+    if err := http.ListenAndServe(":8080", handler); err != nil {
         log.Fatal(err)
     }
 }
@@ -57,6 +58,30 @@ ratelimitx.ByHeader("X-API-Key")
 ```
 
 You can also provide your own `KeyFunc`.
+
+## Middleware Options
+
+You can keep the default middleware behavior:
+
+```go
+middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
+```
+
+Or customize the rejected response while keeping the rate-limit headers:
+
+```go
+middleware := ratelimitx.HTTPMiddlewareWithOptions(
+    limiter,
+    ratelimitx.ByIP(),
+    ratelimitx.HTTPMiddlewareOptions{
+        OnRejected: func(w http.ResponseWriter, r *http.Request, result ratelimitx.Result) {
+            w.Header().Set("Content-Type", "text/plain")
+            w.WriteHeader(http.StatusTooManyRequests)
+            _, _ = w.Write([]byte("chill bruh"))
+        },
+    },
+)
+```
 
 ## Response Behavior
 
@@ -76,12 +101,15 @@ Blocked requests also include:
 
 ## Example
 
-A runnable example is available at `examples/basic/main.go`.
+Runnable examples are available at:
+- `examples/basic/main.go`
+- `examples/custom_response/main.go`
 
-Run it with:
+Run them with:
 
 ```bash
 go run ./examples/basic
+go run ./examples/custom_response
 ```
 
 ## Current Scope
