@@ -2,6 +2,8 @@
 
 `ratelimitx` is a small Go rate limiter library for `net/http` applications.
 
+It is built for practical personal use: small enough to understand quickly, simple enough to adapt, and focused enough to stay out of the way.
+
 It currently provides:
 - an in-memory fixed-window limiter
 - request key helpers
@@ -34,7 +36,7 @@ func main() {
 
     mux := http.NewServeMux()
     mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("ok"))
+        _, _ = w.Write([]byte("ok\n"))
     })
 
     middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
@@ -70,6 +72,16 @@ Blocked requests also include:
 
 ```json
 {"error":"rate limit exceeded"}
+```
+
+## Example
+
+A runnable example is available at `examples/basic/main.go`.
+
+Run it with:
+
+```bash
+go run ./examples/basic
 ```
 
 ## Current Scope
