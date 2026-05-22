@@ -58,6 +58,65 @@ func TestHTTPMiddlewareAllowsRequest(t *testing.T) {
 	}
 }
 
+func TestWrapHTTPAllowsRequest(t *testing.T) {
+	limiter := &stubLimiter{result: Result{
+		Allowed:   true,
+		Limit:     5,
+		Remaining: 4,
+		ResetAt:   time.Unix(1700000000, 0),
+	}}
+
+	handler := WrapHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}), limiter, ByHeader("X-API-Key"))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-API-Key", "client-wrap")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	if limiter.key != "client-wrap" {
+		t.Fatalf("unexpected limiter key: %q", limiter.key)
+	}
+
+	if res.Code != http.StatusNoContent {
+		t.Fatalf("unexpected status code: %d", res.Code)
+	}
+
+	if got := res.Header().Get("X-RateLimit-Limit"); got != "5" {
+		t.Fatalf("unexpected limit header: %q", got)
+	}
+}
+
+func TestWrapHTTPBlocksRequest(t *testing.T) {
+	limiter := &stubLimiter{result: Result{
+		Allowed:    false,
+		Limit:      5,
+		Remaining:  0,
+		RetryAfter: 1500 * time.Millisecond,
+		ResetAt:    time.Unix(1700000000, 0),
+	}}
+
+	handler := WrapHTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("next handler should not be called")
+	}), limiter, ByHeader("X-API-Key"))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-API-Key", "client-wrap")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	if res.Code != http.StatusTooManyRequests {
+		t.Fatalf("unexpected status code: %d", res.Code)
+	}
+
+	if got := res.Header().Get("Retry-After"); got != "2" {
+		t.Fatalf("unexpected retry-after header: %q", got)
+	}
+}
+
 func TestHTTPMiddlewareBlocksRequest(t *testing.T) {
 	limiter := &stubLimiter{result: Result{
 		Allowed:    false,

@@ -39,8 +39,7 @@ func main() {
         _, _ = w.Write([]byte("ok\n"))
     })
 
-    middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
-    handler := middleware(mux)
+    handler := ratelimitx.WrapHTTP(mux, limiter, ratelimitx.ByIP())
 
     if err := http.ListenAndServe(":8080", handler); err != nil {
         log.Fatal(err)
@@ -61,7 +60,13 @@ You can also provide your own `KeyFunc`.
 
 ## Middleware Options
 
-You can keep the default middleware behavior:
+For the simplest `net/http` usage:
+
+```go
+handler := ratelimitx.WrapHTTP(mux, limiter, ratelimitx.ByIP())
+```
+
+If you want the middleware function itself:
 
 ```go
 middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())

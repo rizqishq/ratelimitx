@@ -15,6 +15,11 @@ type HTTPMiddlewareOptions struct {
 	OnRejected RateLimitResponseFunc
 }
 
+// WrapHTTP wraps an http.Handler with rate limiting behavior.
+func WrapHTTP(next http.Handler, limiter Limiter, keyFunc KeyFunc) http.Handler {
+	return HTTPMiddleware(limiter, keyFunc)(next)
+}
+
 // HTTPMiddleware wraps an http.Handler with rate limiting behavior.
 func HTTPMiddleware(limiter Limiter, keyFunc KeyFunc) func(http.Handler) http.Handler {
 	return HTTPMiddlewareWithOptions(limiter, keyFunc, HTTPMiddlewareOptions{})
