@@ -24,7 +24,7 @@ func main() {
 		mux,
 		limiter,
 		ratelimitx.ByIP(),
-		ratelimitx.HTTPMiddlewareOptions{
+		ratelimitx.HTTPOptions{
 			OnRejected: func(w http.ResponseWriter, r *http.Request, result ratelimitx.Result) {
 				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusTooManyRequests)

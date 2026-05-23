@@ -131,7 +131,7 @@ func TestWrapHTTPWithCustomRejectedResponse(t *testing.T) {
 
 	handler := WrapHTTPWith(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("next handler should not be called")
-	}), limiter, ByHeader("X-API-Key"), HTTPMiddlewareOptions{
+	}), limiter, ByHeader("X-API-Key"), HTTPOptions{
 		OnRejected: func(w http.ResponseWriter, r *http.Request, result Result) {
 			called = true
 			receivedResult = result
@@ -215,7 +215,7 @@ func TestHTTPMiddlewareBlocksRequest(t *testing.T) {
 	}
 }
 
-func TestHTTPMiddlewareWithOptionsCustomRejectedResponse(t *testing.T) {
+func TestHTTPMiddlewareWithCustomRejectedResponse(t *testing.T) {
 	limiter := &stubLimiter{result: Result{
 		Allowed:    false,
 		Limit:      3,
@@ -228,7 +228,7 @@ func TestHTTPMiddlewareWithOptionsCustomRejectedResponse(t *testing.T) {
 	var receivedResult Result
 	var receivedPath string
 
-	middleware := HTTPMiddlewareWithOptions(limiter, ByHeader("X-API-Key"), HTTPMiddlewareOptions{
+	middleware := HTTPMiddlewareWith(limiter, ByHeader("X-API-Key"), HTTPOptions{
 		OnRejected: func(w http.ResponseWriter, r *http.Request, result Result) {
 			called = true
 			receivedResult = result
@@ -287,7 +287,7 @@ func TestHTTPMiddlewareWithOptionsCustomRejectedResponse(t *testing.T) {
 	}
 }
 
-func TestHTTPMiddlewareWithOptionsUsesDefaultRejectedResponseWhenNil(t *testing.T) {
+func TestHTTPMiddlewareWithUsesDefaultRejectedResponseWhenNil(t *testing.T) {
 	limiter := &stubLimiter{result: Result{
 		Allowed:    false,
 		Limit:      2,
@@ -296,7 +296,7 @@ func TestHTTPMiddlewareWithOptionsUsesDefaultRejectedResponseWhenNil(t *testing.
 		ResetAt:    time.Unix(1700005678, 0),
 	}}
 
-	middleware := HTTPMiddlewareWithOptions(limiter, ByHeader("X-API-Key"), HTTPMiddlewareOptions{})
+	middleware := HTTPMiddlewareWith(limiter, ByHeader("X-API-Key"), HTTPOptions{})
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("next handler should not be called")
 	}))

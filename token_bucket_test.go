@@ -88,17 +88,17 @@ func TestTokenBucketSweepsFullIdleEntries(t *testing.T) {
 	}
 
 	now := time.Now()
-	limiter.clients["idle"] = &tokenBucketEntry{tokens: 0, lastRefill: now.Add(-2 * time.Second)}
-	limiter.clients["active"] = &tokenBucketEntry{tokens: 0, lastRefill: now}
+	limiter.entries["idle"] = &tokenBucketEntry{tokens: 0, lastRefill: now.Add(-2 * time.Second)}
+	limiter.entries["active"] = &tokenBucketEntry{tokens: 0, lastRefill: now}
 	limiter.nextSweep = now.Add(-time.Millisecond)
 
 	limiter.Allow("fresh")
 
-	if _, ok := limiter.clients["idle"]; ok {
+	if _, ok := limiter.entries["idle"]; ok {
 		t.Fatal("expected full idle key to be removed")
 	}
 
-	if _, ok := limiter.clients["active"]; !ok {
+	if _, ok := limiter.entries["active"]; !ok {
 		t.Fatal("expected active key to remain")
 	}
 }

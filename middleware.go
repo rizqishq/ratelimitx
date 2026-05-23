@@ -10,28 +10,28 @@ import (
 // RateLimitResponseFunc writes the HTTP response for a rejected request.
 type RateLimitResponseFunc func(w http.ResponseWriter, r *http.Request, result Result)
 
-// HTTPMiddlewareOptions configures optional HTTP middleware behavior.
-type HTTPMiddlewareOptions struct {
+// HTTPOptions configures optional HTTP middleware behavior.
+type HTTPOptions struct {
 	OnRejected RateLimitResponseFunc
 }
 
 // WrapHTTP wraps an http.Handler with rate limiting behavior.
 func WrapHTTP(next http.Handler, limiter Limiter, keyFunc KeyFunc) http.Handler {
-	return WrapHTTPWith(next, limiter, keyFunc, HTTPMiddlewareOptions{})
+	return WrapHTTPWith(next, limiter, keyFunc, HTTPOptions{})
 }
 
 // WrapHTTPWith wraps an http.Handler with rate limiting behavior and optional middleware customization.
-func WrapHTTPWith(next http.Handler, limiter Limiter, keyFunc KeyFunc, options HTTPMiddlewareOptions) http.Handler {
-	return HTTPMiddlewareWithOptions(limiter, keyFunc, options)(next)
+func WrapHTTPWith(next http.Handler, limiter Limiter, keyFunc KeyFunc, options HTTPOptions) http.Handler {
+	return HTTPMiddlewareWith(limiter, keyFunc, options)(next)
 }
 
 // HTTPMiddleware wraps an http.Handler with rate limiting behavior.
 func HTTPMiddleware(limiter Limiter, keyFunc KeyFunc) func(http.Handler) http.Handler {
-	return HTTPMiddlewareWithOptions(limiter, keyFunc, HTTPMiddlewareOptions{})
+	return HTTPMiddlewareWith(limiter, keyFunc, HTTPOptions{})
 }
 
-// HTTPMiddlewareWithOptions wraps an http.Handler with rate limiting behavior and optional middleware customization.
-func HTTPMiddlewareWithOptions(limiter Limiter, keyFunc KeyFunc, options HTTPMiddlewareOptions) func(http.Handler) http.Handler {
+// HTTPMiddlewareWith wraps an http.Handler with rate limiting behavior and optional middleware customization.
+func HTTPMiddlewareWith(limiter Limiter, keyFunc KeyFunc, options HTTPOptions) func(http.Handler) http.Handler {
 	onRejected := options.OnRejected
 	if onRejected == nil {
 		onRejected = defaultRejectedResponse

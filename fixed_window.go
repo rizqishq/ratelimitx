@@ -12,7 +12,7 @@ type FixedWindowLimiter struct {
 	window time.Duration
 
 	mu        sync.Mutex
-	clients   map[string]*fixedWindowEntry
+	entries   map[string]*fixedWindowEntry
 	nextSweep time.Time
 }
 
@@ -36,7 +36,7 @@ func NewFixedWindowLimiter(limit int, window time.Duration) (*FixedWindowLimiter
 	return &FixedWindowLimiter{
 		limit:     limit,
 		window:    window,
-		clients:   make(map[string]*fixedWindowEntry),
+		entries:   make(map[string]*fixedWindowEntry),
 		nextSweep: now.Add(window),
 	}, nil
 }
@@ -49,12 +49,12 @@ func (l *FixedWindowLimiter) Allow(key string) Result {
 	now := time.Now()
 	l.sweepExpired(now)
 
-	entry, exists := l.clients[key]
+	entry, exists := l.entries[key]
 
 	if !exists || !now.Before(entry.expiresAt) {
 		resetAt := now.Add(l.window)
 
-		l.clients[key] = &fixedWindowEntry{
+		l.entries[key] = &fixedWindowEntry{
 			count:     1,
 			expiresAt: resetAt,
 		}
@@ -94,9 +94,9 @@ func (l *FixedWindowLimiter) sweepExpired(now time.Time) {
 		return
 	}
 
-	for key, entry := range l.clients {
+	for key, entry := range l.entries {
 		if !now.Before(entry.expiresAt) {
-			delete(l.clients, key)
+			delete(l.entries, key)
 		}
 	}
 

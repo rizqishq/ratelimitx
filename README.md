@@ -90,7 +90,7 @@ handler := ratelimitx.WrapHTTPWith(
     mux,
     limiter,
     ratelimitx.ByIP(),
-    ratelimitx.HTTPMiddlewareOptions{
+    ratelimitx.HTTPOptions{
         OnRejected: func(w http.ResponseWriter, r *http.Request, result ratelimitx.Result) {
             w.Header().Set("Content-Type", "text/plain")
             w.WriteHeader(http.StatusTooManyRequests)
@@ -109,7 +109,7 @@ middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
 Or the middleware function with options:
 
 ```go
-middleware := ratelimitx.HTTPMiddlewareWithOptions(limiter, ratelimitx.ByIP(), ratelimitx.HTTPMiddlewareOptions{...})
+middleware := ratelimitx.HTTPMiddlewareWith(limiter, ratelimitx.ByIP(), ratelimitx.HTTPOptions{...})
 ```
 
 ## Response Behavior

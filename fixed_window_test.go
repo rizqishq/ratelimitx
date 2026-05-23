@@ -74,17 +74,17 @@ func TestFixedWindowLimiterSweepsExpiredEntries(t *testing.T) {
 	}
 
 	now := time.Now()
-	limiter.clients["expired"] = &fixedWindowEntry{count: 1, expiresAt: now.Add(-time.Second)}
-	limiter.clients["active"] = &fixedWindowEntry{count: 1, expiresAt: now.Add(time.Second)}
+	limiter.entries["expired"] = &fixedWindowEntry{count: 1, expiresAt: now.Add(-time.Second)}
+	limiter.entries["active"] = &fixedWindowEntry{count: 1, expiresAt: now.Add(time.Second)}
 	limiter.nextSweep = now.Add(-time.Millisecond)
 
 	limiter.Allow("fresh")
 
-	if _, ok := limiter.clients["expired"]; ok {
+	if _, ok := limiter.entries["expired"]; ok {
 		t.Fatal("expected expired key to be removed")
 	}
 
-	if _, ok := limiter.clients["active"]; !ok {
+	if _, ok := limiter.entries["active"]; !ok {
 		t.Fatal("expected active key to remain")
 	}
 }

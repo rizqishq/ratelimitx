@@ -14,7 +14,7 @@ type TokenBucketLimiter struct {
 	rate       float64
 
 	mu        sync.Mutex
-	clients   map[string]*tokenBucketEntry
+	entries   map[string]*tokenBucketEntry
 	nextSweep time.Time
 }
 
@@ -39,7 +39,7 @@ func NewTokenBucket(capacity int, refillTime time.Duration) (*TokenBucketLimiter
 		capacity:   capacity,
 		refillTime: refillTime,
 		rate:       float64(capacity) / refillTime.Seconds(),
-		clients:    make(map[string]*tokenBucketEntry),
+		entries:    make(map[string]*tokenBucketEntry),
 		nextSweep:  now.Add(refillTime),
 	}, nil
 }
@@ -52,13 +52,13 @@ func (l *TokenBucketLimiter) Allow(key string) Result {
 	now := time.Now()
 	l.sweepIdle(now)
 
-	entry, ok := l.clients[key]
+	entry, ok := l.entries[key]
 	if !ok {
 		entry = &tokenBucketEntry{
 			tokens:     float64(l.capacity),
 			lastRefill: now,
 		}
-		l.clients[key] = entry
+		l.entries[key] = entry
 	}
 
 	l.refill(entry, now)
@@ -122,11 +122,11 @@ func (l *TokenBucketLimiter) sweepIdle(now time.Time) {
 		return
 	}
 
-	for key, entry := range l.clients {
+	for key, entry := range l.entries {
 		shadow := *entry
 		l.refill(&shadow, now)
 		if shadow.tokens >= float64(l.capacity) {
-			delete(l.clients, key)
+			delete(l.entries, key)
 		}
 	}
 
