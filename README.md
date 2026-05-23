@@ -6,6 +6,7 @@ It is built for practical personal use: small enough to understand quickly, simp
 
 It currently provides:
 - an in-memory fixed-window limiter
+- an in-memory token bucket limiter
 - request key helpers
 - an HTTP middleware that returns `429 Too Many Requests`
 
@@ -46,6 +47,22 @@ func main() {
     }
 }
 ```
+
+## Available Limiters
+
+Use the fixed-window limiter when you want a simple per-window limit:
+
+```go
+limiter, err := ratelimitx.NewFixedWindowLimiter(5, time.Minute)
+```
+
+Use the token bucket limiter when you want limited bursts with gradual refill:
+
+```go
+limiter, err := ratelimitx.NewTokenBucket(10, time.Minute)
+```
+
+In `NewTokenBucket(capacity, refillTime)`, `capacity` is the maximum burst size and `refillTime` is the time needed to refill the bucket back to full.
 
 ## Key Functions
 
@@ -110,6 +127,8 @@ Runnable examples are available at:
 - `examples/basic/main.go`
 - `examples/custom_response/main.go`
 
+The basic example currently uses `NewFixedWindowLimiter(...)`, but you can swap in `NewTokenBucket(...)` with the same `WrapHTTP(...)` flow.
+
 Run them with:
 
 ```bash
@@ -124,5 +143,4 @@ This library is intentionally small.
 Current limitations:
 - in-memory only
 - single-process only
-- fixed-window algorithm only
 - no distributed/shared backend
