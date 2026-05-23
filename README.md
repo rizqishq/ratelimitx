@@ -83,16 +83,11 @@ For the simplest `net/http` usage:
 handler := ratelimitx.WrapHTTP(mux, limiter, ratelimitx.ByIP())
 ```
 
-If you want the middleware function itself:
+To customize the rejected response while keeping the wrap-style API:
 
 ```go
-middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
-```
-
-Or customize the rejected response while keeping the rate-limit headers:
-
-```go
-middleware := ratelimitx.HTTPMiddlewareWithOptions(
+handler := ratelimitx.WrapHTTPWith(
+    mux,
     limiter,
     ratelimitx.ByIP(),
     ratelimitx.HTTPMiddlewareOptions{
@@ -103,6 +98,18 @@ middleware := ratelimitx.HTTPMiddlewareWithOptions(
         },
     },
 )
+```
+
+If you want the middleware function itself:
+
+```go
+middleware := ratelimitx.HTTPMiddleware(limiter, ratelimitx.ByIP())
+```
+
+Or the middleware function with options:
+
+```go
+middleware := ratelimitx.HTTPMiddlewareWithOptions(limiter, ratelimitx.ByIP(), ratelimitx.HTTPMiddlewareOptions{...})
 ```
 
 ## Response Behavior

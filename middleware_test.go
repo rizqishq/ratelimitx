@@ -117,6 +117,62 @@ func TestWrapHTTPBlocksRequest(t *testing.T) {
 	}
 }
 
+func TestWrapHTTPWithCustomRejectedResponse(t *testing.T) {
+	limiter := &stubLimiter{result: Result{
+		Allowed:    false,
+		Limit:      3,
+		Remaining:  0,
+		RetryAfter: 3 * time.Second,
+		ResetAt:    time.Unix(1700001234, 0),
+	}}
+
+	var called bool
+	var receivedResult Result
+
+	handler := WrapHTTPWith(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("next handler should not be called")
+	}), limiter, ByHeader("X-API-Key"), HTTPMiddlewareOptions{
+		OnRejected: func(w http.ResponseWriter, r *http.Request, result Result) {
+			called = true
+			receivedResult = result
+			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("X-Custom-Rejected", "yes")
+			w.WriteHeader(http.StatusTeapot)
+			_, _ = w.Write([]byte("blocked by wrap helper"))
+		},
+	})
+
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-API-Key", "client-wrap-custom")
+	res := httptest.NewRecorder()
+
+	handler.ServeHTTP(res, req)
+
+	if !called {
+		t.Fatal("expected custom rejection handler to be called")
+	}
+
+	if receivedResult != limiter.result {
+		t.Fatalf("unexpected result passed to custom handler: %+v", receivedResult)
+	}
+
+	if res.Code != http.StatusTeapot {
+		t.Fatalf("unexpected status code: %d", res.Code)
+	}
+
+	if got := res.Header().Get("X-Custom-Rejected"); got != "yes" {
+		t.Fatalf("unexpected custom header: %q", got)
+	}
+
+	if got := res.Header().Get("X-RateLimit-Limit"); got != "3" {
+		t.Fatalf("unexpected limit header: %q", got)
+	}
+
+	if body := res.Body.String(); body != "blocked by wrap helper" {
+		t.Fatalf("unexpected body: %q", body)
+	}
+}
+
 func TestHTTPMiddlewareBlocksRequest(t *testing.T) {
 	limiter := &stubLimiter{result: Result{
 		Allowed:    false,

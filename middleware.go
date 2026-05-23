@@ -17,7 +17,12 @@ type HTTPMiddlewareOptions struct {
 
 // WrapHTTP wraps an http.Handler with rate limiting behavior.
 func WrapHTTP(next http.Handler, limiter Limiter, keyFunc KeyFunc) http.Handler {
-	return HTTPMiddleware(limiter, keyFunc)(next)
+	return WrapHTTPWith(next, limiter, keyFunc, HTTPMiddlewareOptions{})
+}
+
+// WrapHTTPWith wraps an http.Handler with rate limiting behavior and optional middleware customization.
+func WrapHTTPWith(next http.Handler, limiter Limiter, keyFunc KeyFunc, options HTTPMiddlewareOptions) http.Handler {
+	return HTTPMiddlewareWithOptions(limiter, keyFunc, options)(next)
 }
 
 // HTTPMiddleware wraps an http.Handler with rate limiting behavior.
